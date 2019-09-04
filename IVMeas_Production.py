@@ -19,14 +19,14 @@ import winsound
 def main():
     rm, power, pico, params, save_params = initialize()
     measure(power, pico, params, save_params)
-    shut_down(power, pico)
+    shut_down(power)
     print("donzo")
     winsound.Beep(1000, 400)  # Computer beeps once measurement has finished.
 
 
 # Initialize program parameters and instruments.
 def initialize():
-    rm, power, pico, led = get_instruments()
+    rm, power, pico = get_instruments()
 
     # Initialization of instruments optional.
     initialize_power(power)
@@ -35,15 +35,15 @@ def initialize():
     save_params = initialize_save()
     params = set_parameters()
 
-    return rm, power, pico, led, params, save_params
+    return rm, power, pico, params, save_params
 
 
 # Initialize power supply and ammeter on GPIB via
 # VISA and instruments' hard coded address.
 def get_instruments():
-    led_address = 'GPIB0::5::INSTR'
+    # led_address = 'GPIB0::5::INSTR'
     power_address = 'GPIB0::6::INSTR'
-    #    multiAddress = 'GPIB0::16::INSTR'
+    # multiAddress = 'GPIB0::16::INSTR'
     pico_address = 'GPIB0::22::INSTR'
 
     rm = visa.ResourceManager()
@@ -81,7 +81,7 @@ def initialize_save():
 
 # Set program parameters as dictionary.
 def set_parameters():
-    v_max = input("Enter Max Voltage: ")  # V Maximum voltage for range.
+    v_max = float(input("Enter Max Voltage: "))  # V Maximum voltage for range.
     v_min = v_max - 3.0  # V Minimum voltage for range.
     v_step = -0.25  # V Step size for voltage iteration.
     i_reads = 10  # Number of current readings per V.
@@ -202,7 +202,7 @@ def read_multi_i(multi):
 
 
 # Shut down measurement tools.
-def shut_down(power, pico):
+def shut_down(power):
     power.write("VOLTage 0")
     power.write("OUTPut OFF")
 
