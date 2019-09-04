@@ -14,11 +14,14 @@ import numpy as np
 import time
 import winsound
 
+# Set main directory to save files in.
+main_dir = '/home/dylan/'
+
 
 # Main function to be run.
 def main():
-    rm, power, pico, params, save_params = initialize()
-    measure(power, pico, params, save_params)
+    rm, power, pico, multi, params, save_params = initialize()
+    measure(power, pico, multi, params, save_params)
     shut_down(power)
     print("donzo")
     winsound.Beep(1000, 400)  # Computer beeps once measurement has finished.
@@ -26,16 +29,17 @@ def main():
 
 # Initialize program parameters and instruments.
 def initialize():
-    rm, power, pico = get_instruments()
+    rm, power, pico, multi = get_instruments()
 
     # Initialization of instruments optional.
     initialize_power(power)
     initialize_pico(pico)
+    initialize_multi(multi)
 
     save_params = initialize_save()
     params = set_parameters()
 
-    return rm, power, pico, params, save_params
+    return rm, power, pico, multi, params, save_params
 
 
 # Initialize power supply and ammeter on GPIB via
@@ -43,14 +47,15 @@ def initialize():
 def get_instruments():
     # led_address = 'GPIB0::5::INSTR'
     power_address = 'GPIB0::6::INSTR'
-    # multiAddress = 'GPIB0::16::INSTR'
+    multi_address = 'GPIB0::16::INSTR'
     pico_address = 'GPIB0::22::INSTR'
 
     rm = visa.ResourceManager()
     power = rm.open_resource(power_address)
     pico = rm.open_resource(pico_address)
+    multi = rm.open_resource(multi_address)
 
-    return rm, power, pico
+    return rm, power, pico, multi
 
 
 # Initialize the power supply.
@@ -61,7 +66,8 @@ def initialize_power(power):
 
 # Initialize multimeter.
 def initialize_multi(multi):
-    multi.write("FUNCtion 'CURRent'")
+    # multi.write("FUNCtion 'CURRent'")
+    multi.write("FUNCtion 'VOLTage'")
 
 
 # Initialize Picoammeter.
@@ -71,7 +77,7 @@ def initialize_pico(pico):
 
 # Set Save Parameters. Choose where to save output file and enter SiPM chip info.
 def initialize_save():
-    save_dir = '/home/dylan/'
+    save_dir = main_dir
     si_pmn = input("Enter SiPM Chip Number: ")
 
     save_params = {"save_dir": save_dir, "SiPMN": si_pmn}
@@ -100,11 +106,11 @@ def set_parameters():
 
 
 # Take measurement of Current vs Voltage.
-def measure(power, pico, params, save_params):
+def measure(power, pico, multi, params, save_params):
     v_step, v_start, v_end = set_v_loop(params)  # Get loop parameters from Params.
 
     start = time.time()  # Start a timer.
-    data = [[], [], [], []]  # [[Time],[SetVoltage],[OutputVoltage],[Current]]
+    data = [[], [], [], [], []]  # [[Time],[SetVoltage],[OutputVoltage],[MultiVoltage],[Current]]
     time0 = time.time()  # Start timer used for time data points.
 
     # Iterate over the voltage range, taking current measurements at each step and recording.
@@ -112,7 +118,7 @@ def measure(power, pico, params, save_params):
         set_power_v(power, v)  # Set bias voltage to V at each step.
 
         # Make/record all data readings for this voltage step.
-        flag = read(pico, data, v, power, time0, params["IReads"], params["BreakI"])
+        flag = read(power, pico, multi, data, v, time0, params["IReads"], params["BreakI"])
 
         if flag == "Break":
             break  # If current is too close to limit, stop increasing V.
@@ -150,13 +156,14 @@ def set_led_v(led, v):
 
 
 # Read and record data.
-def read(pico, data, v, power, time0, i_reads, break_i):
+def read(power, pico, multi, data, v, time0, i_reads, break_i):
     flag = ""  # Set a flag in case current exceeds BreakI.
 
     # Take data IReads times at this voltage step.
     for j in range(i_reads):
         t = time.time()
         power_v = read_power_v(power)  # Read voltage from power supply.
+        multi_v = read_multi_v(multi)
         i = read_pico_i(pico)  # Read current from pico.
 
         # If current is greater than BreakI or is overflow, set flag to break and exit loop. Print warning.
@@ -169,7 +176,8 @@ def read(pico, data, v, power, time0, i_reads, break_i):
             data[0].append(t - time0)
             data[1].append(v)
             data[2].append(power_v)
-            data[3].append(i)
+            data[3].append(multi_v)
+            data[4].append(i)
 
     return flag
 
@@ -199,6 +207,14 @@ def read_multi_i(multi):
     i = float(i.split(',')[0].strip('ADC'))
 
     return i
+
+
+# Read current of multimeter.
+def read_multi_v(multi):
+    v = multi.query('FETCh?')
+    v = float(v.split(',')[0].strip('VDC'))
+
+    return v
 
 
 # Shut down measurement tools.
@@ -242,7 +258,7 @@ def write_file(file, data, params, save_params):
 # second line as compact version of this info.
 def write_info_line(file, params, save_params):
     # Write all run info readably to the first line.
-    si_pm = "SiPM Chip: " + save_params["SiPMV"] + "V #" + save_params["SiPMN"]
+    si_pm = "SiPM Chip: " + params["VMax"] + "V (max) Board #" + save_params["SiPMN"]
     led = "LED Voltage: 75V"
     v = "Voltage from " + str(params["VMin"]) + "V to " + str(params["VMax"]) + "V with steps " + \
         str(params["VStep"]) + "V"
@@ -252,7 +268,7 @@ def write_info_line(file, params, save_params):
     file.write(si_pm + " | " + led + " | " + v + " | " + i + " | " + notes + "\n")
 
     # Write same run info in a compact form to second line to be extracted easily when reading the data file.
-    compact = "Compact: {0} {1} {2} {3} {4} {5}\n".format(save_params["SiPMV"], save_params["SiPMN"],
+    compact = "Compact: {0} {1} {2} {3} {4} {5}\n".format(save_params["VMax"], save_params["SiPMN"],
                                                           str(params["VMin"]), str(params["VMax"]),
                                                           str(params["VStep"]), str(params["IReads"]))
 
@@ -262,7 +278,8 @@ def write_info_line(file, params, save_params):
 # Skip third line, write fourth line with data column headers.
 def write_header_line(file):
     file.write("\n")
-    file.write("Time from start (s)\tSet Power Voltage (V)\tOutput Power Voltage\tPico Current (A)")
+    file.write("Time from start (s)\tSet Power Voltage (V)\tPower Supply Voltage Reading\t"
+               "Multimeter Voltage Reading\tPico Current (A)")
     file.write("\n")
 
 
