@@ -234,12 +234,12 @@ def save_data(data, params, save_params):
 # Open file to save data. File name is just the current date (arbitrary).
 def get_file(save_params):
     # Construct new file path.
-    file_path = f'board{save_params["SIPMN"]}.txt'
+    file_path = f'board{save_params["SiPMN"]}.txt'
 
     # If file exists, create one with same path plus a (#) at the end. Avoids overwriting.
     i = 1
     while DL.CheckForFile(file_path):
-        file_path = f'board{save_params["SIPMN"]}({i}).txt'
+        file_path = f'board{save_params["SiPMN"]}({i}).txt'
         i += 1
 
     file = open(file_path, "w")  # Create and open this new text file in write mode.
@@ -258,7 +258,7 @@ def write_file(file, data, params, save_params):
 # second line as compact version of this info.
 def write_info_line(file, params, save_params):
     # Write all run info readably to the first line.
-    si_pm = "SiPM Chip: " + params["VMax"] + "V (max) Board #" + save_params["SiPMN"]
+    si_pm = "SiPM Chip: " + str(params["VMax"]) + "V (max) Board #" + str(save_params["SiPMN"])
     led = "LED Voltage: 75V"
     v = "Voltage from " + str(params["VMin"]) + "V to " + str(params["VMax"]) + "V with steps " + \
         str(params["VStep"]) + "V"
@@ -268,7 +268,7 @@ def write_info_line(file, params, save_params):
     file.write(si_pm + " | " + led + " | " + v + " | " + i + " | " + notes + "\n")
 
     # Write same run info in a compact form to second line to be extracted easily when reading the data file.
-    compact = "Compact: {0} {1} {2} {3} {4} {5}\n".format(save_params["VMax"], save_params["SiPMN"],
+    compact = "Compact: {0} {1} {2} {3} {4} {5}\n".format(params["VMax"], save_params["SiPMN"],
                                                           str(params["VMin"]), str(params["VMax"]),
                                                           str(params["VStep"]), str(params["IReads"]))
 

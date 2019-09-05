@@ -1,9 +1,8 @@
 import os
-from Tkinter import Tk
-from tkFileDialog import askdirectory
-from tkFileDialog import askopenfilename
-from tkMessageBox import *
-from Tkinter import *
+from tkinter import *
+from tkinter.filedialog import askdirectory
+from tkinter.filedialog import askopenfilename
+# from tkMessageBox import *
 import shutil
 import winsound
 import random
