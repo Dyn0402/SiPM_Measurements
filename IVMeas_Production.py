@@ -15,9 +15,10 @@ import time
 import winsound
 import matplotlib.pyplot as plt
 from scipy import stats
+import os
 
 # Set main directory to save files in.
-main_dir = 'C:/Users/nuQCD/Desktop/SiPM_Data/'
+main_dir = 'C:/Users/nuQCD/Desktop/SiPM_Data'
 
 
 # Main function to be run.
@@ -252,7 +253,14 @@ def get_file(save_params, bias):
     file_path = f'board{save_params["SiPMN"]}_{bias}.txt'
 
     # If file exists, create one with same path plus a (#) at the end. Avoids overwriting.
-    if not(save_params['overwrite']):
+    if save_params['overwrite']:
+        files = DL.ListFileTypeInDirectory(main_dir, 'txt')
+        for file in files:
+            if f'board{save_params["SiPMN"]}' in file:
+                print(f'Overwriting {file}')
+                os.remove(file)
+        print(files)
+    else:
         i = 1
         while DL.CheckForFile(file_path):
             file_path = f'board{save_params["SiPMN"]}({i}).txt'
