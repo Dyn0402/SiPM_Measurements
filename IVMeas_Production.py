@@ -20,11 +20,15 @@ main_dir = '/home/dylan/'
 
 # Main function to be run.
 def main():
-    rm, power, pico, multi, params, save_params = initialize()
-    measure(power, pico, multi, params, save_params)
-    shut_down(power)
-    print("donzo")
-    winsound.Beep(1000, 400)  # Computer beeps once measurement has finished.
+    while True:
+        rm, power, pico, multi, params, save_params = initialize()
+        if params['VMax'] == '0' and save_params['SiPMN'] == '0':
+            break
+        measure(power, pico, multi, params, save_params)
+        shut_down(power)
+        winsound.Beep(1000, 400)  # Computer beeps once measurement has finished.
+
+    print('donzo')
 
 
 # Initialize program parameters and instruments.
@@ -90,9 +94,10 @@ def set_parameters():
     v_max = float(input("Enter Max Voltage: "))  # V Maximum voltage for range.
     v_min = v_max - 3.0  # V Minimum voltage for range.
     v_step = -0.25  # V Step size for voltage iteration.
-    i_reads = 10  # Number of current readings per V.
+    i_reads = 1  # Number of current readings per V.
     break_i = 1.8e-3  # Amps If current on pico exceeds BreakI, measurement will stop. To avoid overflow/damage.
     # Notes to be added to the output text file.
+    delay = 0.1  # Seconds pause after setting voltage and before read.
     notes = 'Notes: Precision SiPM Breakdown voltage measurement. ' \
             'SiPM is first heated for 7 minutes then run down while hot. This is the run down data. Exposed Chip.'
 
@@ -100,7 +105,7 @@ def set_parameters():
 
     # Place all parameter values in a dictionary to be used when needed.
     params = {"VMax": v_max, "VMin": v_min, "VStep": v_step, "IReads": i_reads,
-              "BreakI": break_i, "Time0": time0, 'Notes': notes}
+              "BreakI": break_i, "Time0": time0, 'Notes': notes, 'Delay': delay}
 
     return params
 
@@ -116,6 +121,8 @@ def measure(power, pico, multi, params, save_params):
     # Iterate over the voltage range, taking current measurements at each step and recording.
     for v in np.arange(v_start, v_end, v_step):
         set_power_v(power, v)  # Set bias voltage to V at each step.
+
+        time.sleep(params['Delay'])  # Delay after setting power and before reading.
 
         # Make/record all data readings for this voltage step.
         flag = read(power, pico, multi, data, v, time0, params["IReads"], params["BreakI"])
