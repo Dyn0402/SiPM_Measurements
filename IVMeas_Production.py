@@ -31,6 +31,7 @@ def main():
         data, slope, intercept, bias = measure(power, pico, multi, params, save_params)
         shut_down(power)
         plot(data, slope, intercept, bias, params['TargetI'])
+        print('\n___________________________________________________________________________________________________\n')
         winsound.Beep(1000, 400)  # Computer beeps once measurement has finished.
 
     print('donzo')
@@ -103,7 +104,7 @@ def set_parameters():
     i_reads = 1  # Number of current readings per V.
     break_i = 1.8e-3  # Amps If current on pico exceeds BreakI, measurement will stop. To avoid overflow/damage.
     # Notes to be added to the output text file.
-    delay = 0.1  # Seconds pause after setting voltage and before read.
+    delay = 0.2  # Seconds pause after setting voltage and before read.
     target_current = 1e-4  # Apms Target current all boards should be calibrated to.
     notes = 'Notes: Precision SiPM Breakdown voltage measurement. ' \
             'SiPM is first heated for 7 minutes then run down while hot. This is the run down data. Exposed Chip.'
@@ -250,7 +251,7 @@ def save_data(data, params, save_params, bias):
 # Open file to save data. File name is just the current date (arbitrary).
 def get_file(save_params, bias):
     # Construct new file path.
-    file_path = f'board{save_params["SiPMN"]}_{bias}.txt'
+    file_path = f'board{save_params["SiPMN"]}.txt'
 
     # If file exists, create one with same path plus a (#) at the end. Avoids overwriting.
     if save_params['overwrite']:
@@ -259,7 +260,6 @@ def get_file(save_params, bias):
             if f'board{save_params["SiPMN"]}' in file:
                 print(f'Overwriting {file}')
                 os.remove(file)
-        print(files)
     else:
         i = 1
         while DL.CheckForFile(file_path):
