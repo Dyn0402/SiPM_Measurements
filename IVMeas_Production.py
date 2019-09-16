@@ -13,6 +13,8 @@ import DList as DL
 import numpy as np
 import time
 import winsound
+import matplotlib.pyplot as plt
+from scipy import stats
 
 # Set main directory to save files in.
 main_dir = '/home/dylan/'
@@ -22,10 +24,12 @@ main_dir = '/home/dylan/'
 def main():
     while True:
         rm, power, pico, multi, params, save_params = initialize()
-        if params['VMax'] == '0' and save_params['SiPMN'] == '0':
+        if int(params['VMax']) == 0 and int(save_params['SiPMN']) == 0:
+            shut_down(power)
             break
-        measure(power, pico, multi, params, save_params)
+        data, slope, intercept, bias = measure(power, pico, multi, params, save_params)
         shut_down(power)
+        plot(data, slope, intercept, bias, params['Target'])
         winsound.Beep(1000, 400)  # Computer beeps once measurement has finished.
 
     print('donzo')
@@ -83,8 +87,9 @@ def initialize_pico(pico):
 def initialize_save():
     save_dir = main_dir
     si_pmn = input("Enter SiPM Chip Number: ")
+    overwrite = True
 
-    save_params = {"save_dir": save_dir, "SiPMN": si_pmn}
+    save_params = {"save_dir": save_dir, "SiPMN": si_pmn, 'overwrite': overwrite}
 
     return save_params
 
@@ -98,6 +103,7 @@ def set_parameters():
     break_i = 1.8e-3  # Amps If current on pico exceeds BreakI, measurement will stop. To avoid overflow/damage.
     # Notes to be added to the output text file.
     delay = 0.1  # Seconds pause after setting voltage and before read.
+    target_current = 1e-4  # Apms Target current all boards should be calibrated to.
     notes = 'Notes: Precision SiPM Breakdown voltage measurement. ' \
             'SiPM is first heated for 7 minutes then run down while hot. This is the run down data. Exposed Chip.'
 
@@ -105,7 +111,8 @@ def set_parameters():
 
     # Place all parameter values in a dictionary to be used when needed.
     params = {"VMax": v_max, "VMin": v_min, "VStep": v_step, "IReads": i_reads,
-              "BreakI": break_i, "Time0": time0, 'Notes': notes, 'Delay': delay}
+              "BreakI": break_i, "Time0": time0, 'Notes': notes, 'Delay': delay,
+              'TargetI': target_current}
 
     return params
 
@@ -130,11 +137,12 @@ def measure(power, pico, multi, params, save_params):
         if flag == "Break":
             break  # If current is too close to limit, stop increasing V.
 
-    save_data(data, params, save_params)  # After each LED run, save all data to text file.
+    slope, intercept, bias = get_bias(data, params['TargetI'])  # Perform linear regression and get bias voltage.
+    save_data(data, params, save_params, bias)  # After each LED run, save all data to text file.
 
     print("Time: {0}".format(time.time() - start))
 
-    return data
+    return data, slope, intercept, bias
 
 
 # Set measurement loop parameters.
@@ -231,23 +239,24 @@ def shut_down(power):
 
 
 # Save data to text file.
-def save_data(data, params, save_params):
+def save_data(data, params, save_params, bias):
     DL.ChangeDirectory(save_params['save_dir'])  # Change working directory to SaveDir to create output file there.
-    file = get_file(save_params)  # Create and open output file.
-    write_file(file, data, params, save_params)  # Write Data to output file.
+    file = get_file(save_params, bias)  # Create and open output file.
+    write_file(file, data, params, save_params, bias)  # Write Data to output file.
     file.close()  # Close output file.
 
 
 # Open file to save data. File name is just the current date (arbitrary).
-def get_file(save_params):
+def get_file(save_params, bias):
     # Construct new file path.
-    file_path = f'board{save_params["SiPMN"]}.txt'
+    file_path = f'board{save_params["SiPMN"]}_{bias}.txt'
 
     # If file exists, create one with same path plus a (#) at the end. Avoids overwriting.
-    i = 1
-    while DL.CheckForFile(file_path):
-        file_path = f'board{save_params["SiPMN"]}({i}).txt'
-        i += 1
+    if not(save_params['overwrite']):
+        i = 1
+        while DL.CheckForFile(file_path):
+            file_path = f'board{save_params["SiPMN"]}({i}).txt'
+            i += 1
 
     file = open(file_path, "w")  # Create and open this new text file in write mode.
 
@@ -255,17 +264,18 @@ def get_file(save_params):
 
 
 # Write run data to file.
-def write_file(file, data, params, save_params):
-    write_info_line(file, params, save_params)  # Write information about run to first two lines.
+def write_file(file, data, params, save_params, bias):
+    write_info_line(file, params, save_params, bias)  # Write information about run to first two lines.
     write_header_line(file)  # Write headers for data columns on the fourth line.
     write_data(file, data)  # Write data into columns under the headers.
 
 
 # Write first line with all information on run with
 # second line as compact version of this info.
-def write_info_line(file, params, save_params):
+def write_info_line(file, params, save_params, bias):
     # Write all run info readably to the first line.
-    si_pm = "SiPM Chip: " + str(params["VMax"]) + "V (max) Board #" + str(save_params["SiPMN"])
+    si_pm = "SiPM Chip: " + str(params["VMax"]) + "V (max) Board #" + str(save_params["SiPMN"]) \
+            + " Bias: " + str(bias) + "V"
     led = "LED Voltage: 75V"
     v = "Voltage from " + str(params["VMin"]) + "V to " + str(params["VMax"]) + "V with steps " + \
         str(params["VStep"]) + "V"
@@ -275,9 +285,9 @@ def write_info_line(file, params, save_params):
     file.write(si_pm + " | " + led + " | " + v + " | " + i + " | " + notes + "\n")
 
     # Write same run info in a compact form to second line to be extracted easily when reading the data file.
-    compact = "Compact: {0} {1} {2} {3} {4} {5}\n".format(params["VMax"], save_params["SiPMN"],
-                                                          str(params["VMin"]), str(params["VMax"]),
-                                                          str(params["VStep"]), str(params["IReads"]))
+    compact = "Compact: {0} {1} {2} {3} {4} {5} {6} {7}\n".format(params["VMax"], save_params["SiPMN"], bias, 75,
+                                                                  str(params["VMin"]), str(params["VMax"]),
+                                                                  str(params["VStep"]), str(params["IReads"]))
 
     file.write(compact)
 
@@ -299,6 +309,39 @@ def write_data(file, data):
             # Write data points, separated by tabs for each column.
             file.write('{0}\t'.format(data[j][i]))
         file.write('\n')
+
+
+# Perform linear regression on data and solve for bias voltage that gives target current
+def get_bias(data, target):
+    slope, intercept, r_value, p_value, std_err = stats.linregress(data[3], data[4])
+    bias = (target - intercept) / slope
+
+    return slope, intercept, bias
+
+
+# Plot data with linear regression
+def plot(data, slope, intercept, bias, target):
+    fig, ax = plt.subplots()
+    # textstr = '\n'.join((
+    #     r'$\mathrm{slope}=%.4f$' % (slope,),
+    #     r'$\mathrm{intercept}=%.4f$' % (intercept,)))
+
+    textstr = '\n'.join((
+        r'$slope = {0:0.4e}$' % (slope,),
+        r'$intercept = {0:0.4e}$' % (intercept,),
+        r'$bias = {0:0.4e}$' % (bias,)))
+
+    ax.plot(data[3], data[4], 'ob')
+    ax.plot(data[3], slope * np.asarray(data[3]) + intercept, '-r')
+    ax.plot(bias, target, '*g')
+    # these are matplotlib.patch.Patch properties
+    props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
+
+    # place a text box in upper left in axes coords
+    ax.text(0.05, 0.95, textstr, transform=ax.transAxes, fontsize=14,
+            verticalalignment='top', bbox=props)
+
+    plt.show()
 
 
 # Tells python to run main() function if this program is run directly.
