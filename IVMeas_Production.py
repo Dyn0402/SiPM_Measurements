@@ -17,7 +17,7 @@ import matplotlib.pyplot as plt
 from scipy import stats
 
 # Set main directory to save files in.
-main_dir = '/home/dylan/'
+main_dir = 'C:/Users/nuQCD/Desktop/SiPM_Data/'
 
 
 # Main function to be run.
@@ -29,7 +29,7 @@ def main():
             break
         data, slope, intercept, bias = measure(power, pico, multi, params, save_params)
         shut_down(power)
-        plot(data, slope, intercept, bias, params['Target'])
+        plot(data, slope, intercept, bias, params['TargetI'])
         winsound.Beep(1000, 400)  # Computer beeps once measurement has finished.
 
     print('donzo')
@@ -322,18 +322,14 @@ def get_bias(data, target):
 # Plot data with linear regression
 def plot(data, slope, intercept, bias, target):
     fig, ax = plt.subplots()
-    # textstr = '\n'.join((
-    #     r'$\mathrm{slope}=%.4f$' % (slope,),
-    #     r'$\mathrm{intercept}=%.4f$' % (intercept,)))
-
     textstr = '\n'.join((
-        r'$slope = {0:0.4e}$' % (slope,),
-        r'$intercept = {0:0.4e}$' % (intercept,),
-        r'$bias = {0:0.4e}$' % (bias,)))
+        r'$\mathrm{slope}=%.3e$' % (slope,),
+        r'$\mathrm{intercept}=%.2e$' % (intercept,),
+        r'$\mathrm{bias}=%.3e$' % (bias,)))
 
     ax.plot(data[3], data[4], 'ob')
     ax.plot(data[3], slope * np.asarray(data[3]) + intercept, '-r')
-    ax.plot(bias, target, '*g')
+    ax.plot(bias, target, '*g', markersize=12)
     # these are matplotlib.patch.Patch properties
     props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
 
