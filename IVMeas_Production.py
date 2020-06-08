@@ -98,7 +98,7 @@ def initialize_save():
 
 # Set program parameters as dictionary.
 def set_parameters():
-    v_max = float(input("Enter Max Voltage: "))  # V Maximum voltage for range.
+    v_max = float(input("Enter Max Voltage: "))  # V Maximum voltage for range. 50mv
     v_min = v_max - 3.0  # V Minimum voltage for range.
     v_step = -0.25  # V Step size for voltage iteration.
     i_reads = 1  # Number of current readings per V.
@@ -180,7 +180,7 @@ def read(power, pico, multi, data, v, time0, i_reads, break_i):
     for j in range(i_reads):
         t = time.time()
         power_v = read_power_v(power)  # Read voltage from power supply.
-        multi_v = read_multi_v(multi)
+        multi_v = read_multi_v(multi)  # Read voltage from multimeter.
         i = read_pico_i(pico)  # Read current from pico.
 
         # If current is greater than BreakI or is overflow, set flag to break and exit loop. Print warning.
@@ -338,6 +338,8 @@ def plot(data, slope, intercept, bias, target):
     ax.plot(data[3], data[4], 'ob')
     ax.plot(data[3], slope * np.asarray(data[3]) + intercept, '-r')
     ax.plot(bias, target, '*g', markersize=12)
+    plt.xlabel('Multimeter Voltage (V)')
+    plt.ylabel('Picoammeter Current')
     # these are matplotlib.patch.Patch properties
     props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
 
