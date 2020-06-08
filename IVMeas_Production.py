@@ -20,6 +20,15 @@ import os
 # Set main directory to save files in.
 main_dir = 'C:/Users/nuQCD/Desktop/SiPM_Data'
 
+# Set output text file to append new SiPM # and bias voltage to
+output_txt = 'C:/Users/nuQCD/Desktop/SiPM_Data/output_bias.txt'
+
+# True to turn on plotting, false to disable
+plotting = True
+
+# True to write individual text file for each measurement, false to disable
+verbose_out = False
+
 
 # Main function to be run.
 def main():
@@ -30,7 +39,8 @@ def main():
             break
         data, slope, intercept, bias = measure(power, pico, multi, params, save_params)
         shut_down(power)
-        plot(data, slope, intercept, bias, params['TargetI'])
+        if plotting:
+            plot(data, slope, intercept, bias, params['TargetI'])
         print('\n___________________________________________________________________________________________________\n')
         winsound.Beep(1000, 400)  # Computer beeps once measurement has finished.
 
@@ -243,9 +253,11 @@ def shut_down(power):
 # Save data to text file.
 def save_data(data, params, save_params, bias):
     DL.ChangeDirectory(save_params['save_dir'])  # Change working directory to SaveDir to create output file there.
-    file = get_file(save_params, bias)  # Create and open output file.
-    write_file(file, data, params, save_params, bias)  # Write Data to output file.
-    file.close()  # Close output file.
+    if verbose_out:
+        file = get_file(save_params, bias)  # Create and open output file.
+        write_file(file, data, params, save_params, bias)  # Write Data to output file.
+        file.close()  # Close output file.
+    write_bias(save_params, bias)
 
 
 # Open file to save data. File name is just the current date (arbitrary).
@@ -317,6 +329,17 @@ def write_data(file, data):
             # Write data points, separated by tabs for each column.
             file.write('{0}\t'.format(data[j][i]))
         file.write('\n')
+
+
+def write_bias(save_params, bias):
+    """
+    Append measured bias to output_txt file with input SiPM number.
+    :param save_params: Dictionary of parameters related to output data.
+    :param bias: Bias calculated from voltage measurements.
+    :return:
+    """
+    with open(output_txt, 'a') as file:
+        file.write(str(save_params["SiPMN"]) + "\t" + str(bias) + "\n")
 
 
 # Perform linear regression on data and solve for bias voltage that gives target current
