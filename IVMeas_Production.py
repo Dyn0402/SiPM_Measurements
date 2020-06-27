@@ -109,13 +109,13 @@ def initialize_save():
 # Set program parameters as dictionary.
 def set_parameters():
     v_max = float(input("Enter Max Voltage: "))  # V Maximum voltage for range. 50mv
-    v_min = v_max - 3.0  # V Minimum voltage for range.
+    v_min = v_max - 2.0  # V Minimum voltage for range.
     v_step = -0.25  # V Step size for voltage iteration.
     i_reads = 1  # Number of current readings per V.
     break_i = 1.8e-3  # Amps If current on pico exceeds BreakI, measurement will stop. To avoid overflow/damage.
     # Notes to be added to the output text file.
     delay = 0.2  # Seconds pause after setting voltage and before read.
-    target_current = 1e-4  # Apms Target current all boards should be calibrated to.
+    target_current = 1.59e-4  # Apms Target current all boards should be calibrated to.
     notes = 'Notes: Precision SiPM Breakdown voltage measurement. ' \
             'SiPM is first heated for 7 minutes then run down while hot. This is the run down data. Exposed Chip.'
 
