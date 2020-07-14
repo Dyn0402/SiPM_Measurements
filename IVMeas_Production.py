@@ -27,7 +27,7 @@ output_txt = 'C:/Users/nuQCD/Desktop/SiPM_Data/output_bias.txt'
 plotting = True
 
 # True to write individual text file for each measurement, false to disable
-verbose_out = False
+verbose_out = True
 
 
 # Main function to be run.
