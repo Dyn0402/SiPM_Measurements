@@ -33,6 +33,25 @@ def main():
     power.write("OUTPut ON")
     power.write("VOLTage 0")
 
+    pause = 0.01  # s Should be realistically optimized based on speed of I response to change in V
+
+    vs, i_vals = np.linspace(40, 42.5, 2000), []
+    for v in np.linspace(40, 42.5, 2000):
+        set_power_v(power, v)
+        time.sleep(pause)
+        i_vals.append(read_pico_i(pico))
+        print(f'V={v:0.2f}, I={i_vals[-1]:0.2f}')
+
+    shut_down(power)
+
+    plt.plot(vs, i_vals)
+    plt.grid()
+    plt.xlabel('Bias Voltage (V)')
+    plt.ylabel('SiPM Current (A)')
+    plt.show()
+
+    print('donzo')
+
 
 # Set voltage of power supply to V.
 def set_power_v(power, v):
